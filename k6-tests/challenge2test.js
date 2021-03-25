@@ -1,9 +1,15 @@
-    // The next challenge introduces latency of 1 second to 10% of dependencies using Simmy.  
+    // The next challenge introduces latency of 1 second to 10% of dependencies using Simmy.
     // Notice that the chaos must be wrapped as the last argument so that it runs inside the retries (try changing that...?)
     // Change the policy in Challenge2Controller.cs
- 
+
 import http from "k6/http";
 import { Rate, Counter, Trend } from "k6/metrics";
+
+// Given that 10% of a Method internal in the API has an additional latency of 1 second
+// When we load test the API With 500 RPS for 6 Seconds
+// Then we expect
+// - the failure rate of the API to be less than 85%
+// - the latency of the 95th percentile to be less than 200ms
 
 export let options = {
   vus       : 50,
@@ -29,4 +35,3 @@ export default function() {
 
   TrendRTT.add(response.timings.duration);
 };
-

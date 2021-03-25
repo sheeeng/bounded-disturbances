@@ -5,7 +5,7 @@
     // we mitigate the errors with Polly as we introduce them.
 
     // In the upcoming challenges someone has written the failing load tests and introduced Simmy the chaos monkey
-    // It is up to you to write and tune Polly resiliency logic to mitigate the errors and pass the SLAs as defined by the NBomber tests 
+    // It is up to you to write and tune Polly resiliency logic to mitigate the errors and pass the SLAs as defined by the NBomber tests
 
 
 import http from "k6/http";

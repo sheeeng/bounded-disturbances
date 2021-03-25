@@ -31,16 +31,16 @@ namespace api_under_test.Controllers
         {
            var chaosPolicy = MonkeyPolicy.InjectLatencyAsync(with =>
                 with.Latency(TimeSpan.FromSeconds(1))
-                    .InjectionRate(0.10) // 10 % 
+                    .InjectionRate(0.10) // 10 %
                     .Enabled(true));    // Would probably only turn it on in some environments
             var mix = Policy.WrapAsync(GetPolicy(), chaosPolicy);
             return await mix.ExecuteAsync((ct) => GetForecasts(ct), CancellationToken.None);
         }
 
         private IAsyncPolicy GetPolicy() {
-            // you can change from here 
-            var retries = 0;
-            var timeout = TimeSpan.FromMilliseconds(3000);
+            // you can change from here
+            var retries = 3;
+            var timeout = TimeSpan.FromMilliseconds(10);
             Program.ConfiguredTimeout.Set(timeout.TotalMilliseconds);
             Program.ConfiguredRetries.Set(retries);
 
@@ -49,7 +49,7 @@ namespace api_under_test.Controllers
 
             var retryPolicy = Policy.Handle<Exception>().RetryAsync(retries, (ex, attempt) => Program.ExecutedRetries.Inc());
             var timeoutPolicy = Policy.TimeoutAsync(timeout);
-            return Policy.WrapAsync(timeoutPolicy, retryPolicy);
+            return Policy.WrapAsync(retryPolicy, timeoutPolicy);
             // until here
         }
 
