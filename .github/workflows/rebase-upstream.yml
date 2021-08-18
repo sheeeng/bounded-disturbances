@@ -1,0 +1,40 @@
+# .github/workflows/rebase-upstream.yml
+# https://stackoverflow.com/a/61574295
+---
+name: Rebase Upstream
+on:
+  schedule:
+    # “At every 30th minute past every hour from 9 through 17 on every day-of-week from Monday through Friday.”
+    # https://crontab.guru/#*/30_9-17_*_*_1-5
+    - cron: "*/30 9-17 * * 1-5"
+jobs:
+  rebase-pull:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # https://github.com/actions/checkout#Fetch-all-history-for-all-tags-and-branches
+      - name: "Commit"
+        uses: github-actions-x/commit@v2.8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          push-branch: master
+          rebase: "true"
+          force-push: "true"
+      - name: "Rebase Upstream"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository  }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+        run: |
+          echo "\${GITHUB_REPOSITORY}: ${GITHUB_REPOSITORY}"
+          echo "\${GITHUB_REPOSITORY_OWNER}: ${GITHUB_REPOSITORY_OWNER}"
+
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+
+          git remote add upstream https://github.com/bjartwolf/bounded-disturbances.git
+
+          DEFAULT_BRANCH=$(git remote show upstream | grep 'HEAD branch' | cut -d' ' -f5)
+          git fetch --all --prune && git pull --rebase --prune upstream "${DEFAULT_BRANCH}"
+          git push --force --set-upstream origin "${DEFAULT_BRANCH}"
