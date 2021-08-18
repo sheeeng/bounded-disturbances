@@ -10,6 +10,15 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Jaeger;
+using OpenTracing;
+using Jaeger.Reporters;
+using Jaeger.Samplers;
+using Jaeger.Senders.Thrift;
+using OpenTracing.Contrib.NetCore.Configuration;
+using Jaeger.Senders;
+using OpenTracing.Util;
+using Unleash;
 
 namespace api_under_test
 {
@@ -26,6 +35,45 @@ namespace api_under_test
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
+            //https://thecloudblog.net/post/distributed-tracing-in-asp.net-core-with-jaeger-and-tye-part-1-distributed-tracing/
+            services.AddOpenTracing();
+
+            services.AddSingleton<ITracer>(sp =>
+            {
+                var serviceName = sp.GetRequiredService<IWebHostEnvironment>().ApplicationName;
+                var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+                Jaeger.Configuration.SenderConfiguration.DefaultSenderResolver = new SenderResolver(loggerFactory)
+                    .RegisterSenderFactory<ThriftSenderFactory>();
+
+                var reporter = new RemoteReporter.Builder().WithLoggerFactory(loggerFactory)
+                    .WithSender(new UdpSender("172.17.0.1", 6831, 65000))
+                    .Build();
+
+                var tracer = new Tracer.Builder(serviceName)
+                    .WithLoggerFactory(loggerFactory)
+                    // The constant sampler reports every span.
+                    .WithSampler(new ConstSampler(true))
+                    // LoggingReporter prints every reported span to the logging framework.
+                    .WithReporter(reporter)
+                    .Build();
+                GlobalTracer.Register(tracer);
+                return tracer;
+            });
+            services.Configure<HttpHandlerDiagnosticOptions>(options =>
+                        options.OperationNameResolver =
+                        request => $"{request.Method.Method}: {request?.RequestUri?.AbsoluteUri}");
+
+            var unleashSecret = Configuration["UnleashToken"]!.Replace("\"", "");
+            var unleashSettings = new UnleashSettings
+            {
+                AppName = "api-under-test",
+                InstanceTag = Environment.MachineName,
+                SendMetricsInterval = TimeSpan.FromMinutes(1),
+                UnleashApi = new Uri("http://172.17.0.1:4242/api/"),
+                CustomHttpHeaders = new Dictionary<string, string> {{"Authorization", unleashSecret}}
+            };
+
+            services.AddSingleton<IUnleash>(ctx => new DefaultUnleash(unleashSettings));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -35,8 +83,6 @@ namespace api_under_test
             {
                 app.UseDeveloperExceptionPage();
             }
-
-//            app.UseHttpsRedirection();
 
             app.UseRouting();
 
