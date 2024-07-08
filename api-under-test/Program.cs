@@ -42,7 +42,7 @@ namespace api_under_test
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();
-                    webBuilder.UseUrls("http://*:5000");
+                    webBuilder.UseUrls("http://*:5555");
                 });
         private static void LogNetworkAndGcInfo(object state)
         {
@@ -52,6 +52,5 @@ namespace api_under_test
             GC1.Set(GC.CollectionCount(1));
             GC2.Set(GC.CollectionCount(2));
         }
-
     }
 }
